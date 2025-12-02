@@ -1,4 +1,2 @@
 #include <iostream>
-int main(){
-	std::sout << "asdad";
-}
+int main(){}
