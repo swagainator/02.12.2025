@@ -30,6 +30,17 @@ namespace top {
     private:
         p_t d;
     };
+
+    struct HSeg : IDraw {
+        explicit HSeg(p_t start, int length);
+        p_t begin() const override;
+        p_t next(p_t prev) const override;
+
+    private:
+        p_t startp;
+        int seglen;
+    };
+
     p_t* extend(const p_t* pts, size_t s, p_t fill);
     void extend(p_t** pts, size_t& s, p_t fill);
     void append(const IDraw* sh, p_t** ppts, size_t& s);
@@ -43,7 +54,7 @@ namespace top {
 int main() {
     using namespace top;
     int err = 0;
-    IDraw* shp[3] = {};
+    IDraw* shp[4] = {};
     p_t* pts = nullptr;
     size_t s = 0;
 
@@ -51,7 +62,9 @@ int main() {
         shp[0] = new Dot({ 0, 0 });
         shp[1] = new Dot({ 2, 4 });
         shp[2] = new Dot({ -5, -2 });
-        for (size_t i = 0; i < 3; ++i) {
+        shp[3] = new HSeg({ -2, 0 }, 4);
+
+        for (size_t i = 0; i < 4; ++i) {
             append(shp[i], &pts, s);
         }
         f_t fr = frame(pts, s);
@@ -68,9 +81,10 @@ int main() {
         err = 1;
     }
 
-    delete shp[2];
-    delete shp[1];
-    delete shp[0];
+    for (int i = 3; i >= 0; --i) {
+        delete shp[i];
+    }
+    delete[] pts;
 
     return err;
 }
@@ -168,4 +182,25 @@ bool top::operator==(p_t a, p_t b) {
 
 bool top::operator!=(p_t a, p_t b) {
     return !(a == b);
+}
+
+top::HSeg::HSeg(p_t start, int length)
+    : startp{ start }, seglen{ length } {
+    if (length <= 0) {
+        throw std::invalid_argument("len < 0");
+    }
+}
+
+top::p_t top::HSeg::begin() const {
+    return startp;
+}
+
+top::p_t top::HSeg::next(p_t prev) const {
+    if (prev == startp && seglen > 1) {
+        return { startp.x + 1, startp.y };
+    }
+    if (prev.x < startp.x + seglen - 1 && prev.x >= startp.x) {
+        return { prev.x + 1, prev.y };
+    }
+    return startp;
 }
