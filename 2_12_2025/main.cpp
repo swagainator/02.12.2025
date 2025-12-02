@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 namespace topit {
     struct p_t {
         int x, y;
@@ -29,7 +30,7 @@ topit::p_t topit::Dot::begin() const {
 }
 topit::p_t topit::Dot::next(p_t prev) const {
     if (prev != d) {
-        std::logic_error("bad prev");
+        throw std::logic_error("bad prev");
     }
     return d;
 }
