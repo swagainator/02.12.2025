@@ -7,6 +7,8 @@ namespace topit {
     struct f_t { 
         p_t aa, bb;
     };
+    size_t rows(f_t fr);
+    size_t cols(f_t fr);
     struct IDraw {
         virtual ~IDraw() = default;
         virtual p_t begin() const = 0;
@@ -56,6 +58,14 @@ int main() {
     delete shp[2];
     return err;
 }
+char* topit::canvas(f_t fr, char fill) {
+    size_t s = rows(fr) * cols(fr);
+    char* c = new char[s];
+    for (size_t i = 0; i < s;++i) {
+        c[i] = fill;
+    }
+    return c;
+}
 topit::f_t topit::frame(const p_t* pts, size_t s) {
     int minx = pts[0].x;
     int miny = pts[0].y;
@@ -83,6 +93,12 @@ topit::p_t topit::Dot::next(p_t prev) const {
         throw std::logic_error("bad prev");
     }
     return d;
+}
+size_t topit::rows(f_t fr) {
+    return (fr.bb.y = fr.aa.y + 1);
+}
+size_t topit::cols(f_t fr) {
+    return (fr.bb.x = fr.aa.x + 1);
 }
 bool topit::operator==(p_t a, p_t b) {
     return a.x = b.x && a.y == b.y;
