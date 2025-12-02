@@ -56,6 +56,21 @@ int main() {
     delete shp[2];
     return err;
 }
+topit::f_t topit::frame(const p_t* pts, size_t s) {
+    int minx = pts[0].x;
+    int miny = pts[0].y;
+    int maxx = pts[0].x;
+    int maxy = pts[0].y;
+    for (size_t i = 1; i < s; ++i) {
+        minx = std::min(minx, pts[i].x);
+        maxx = std::max(maxx, pts[i].x);
+        miny = std::min(miny, pts[i].y);
+        maxy = std::max(maxy, pts[i].y);
+    }
+    p_t a{ minx, miny };
+    p_t b{ maxx, maxy };
+    return f_t{ a, b };
+}
 topit::Dot::Dot(p_t dd) :
  IDraw(), 
  d{dd} 
