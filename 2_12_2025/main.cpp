@@ -57,6 +57,13 @@ namespace topit {
         p_t next(p_t prev) const override;
         f_t rect;
     };
+    struct FRect: IDraw{
+        FRect(p_t pos, int w, int h);
+        FRect(p_t a, p_t b);
+        p_t begin() const override;
+        p_t next(p_t prev) const override;
+        f_t rect;
+    };
 
     p_t* extend(const p_t* pts, size_t s, p_t fill);
     void extend(p_t** pts, size_t& s, p_t fill);
@@ -76,7 +83,7 @@ int main() {
     size_t s = 0;
     
     try {
-        shp[0] = new Square({10, 5}, 10);
+        shp[0] = new FRect({10, 5}, {20, 10});
         shp[1] = new Dot({2, 2});
         
         for (size_t i = 0; i < shp_size; ++i){
@@ -253,8 +260,34 @@ topit::p_t topit::Square::next(p_t prev) const {
 
     return lb;
 }
+topit::FRect::FRect(p_t pos, int w, int h) :
+    IDraw(),
+    rect{pos, {pos.x + w, pos.y + h}}
+{
+    if (!(w > 0 && h > 0)) {
+        throw std::logic_error("bad request");
+    }
+}
+
+topit::p_t topit::FRect::begin() const {
+    return rect.aa;
+}
+
+topit::p_t topit::FRect::next(p_t prev) const {
+    if (prev.x < rect.bb.x){
+        return {prev.x + 1, prev.y};
+    } else if (prev.x == rect.bb.x && prev.y < rect.bb.y){
+        return {rect.aa.x, prev.y + 1};
+    } else if (prev == rect.bb){
+        return rect.aa;
+    }
+    throw std::logic_error("bad impl");
+}
+
+topit::FRect::FRect(p_t a, p_t b): FRect(a, b.x - a.x, b.y - a.y) {}
 
 topit::Rect::Rect(p_t pos, int w, int h) :
+    IDraw(),
     rect{pos, {pos.x + w, pos.y + h}}
 {
     if (!(w > 0 && h > 0)) {
@@ -284,6 +317,8 @@ topit::p_t topit::Rect::next(p_t prev) const {
 
 
 
+
+
 size_t topit::rows (f_t fr){
     return (fr.bb.y - fr.aa.y + 1);
 }
@@ -299,4 +334,3 @@ bool topit::operator==(p_t a, p_t b) {
 bool topit::operator!=(p_t a, p_t b) {
     return !(a == b);
 }
-
