@@ -2,13 +2,13 @@
 #include <stdexcept> 
 #include <algorithm>
 
-namespace top {
+namespace topit {
     struct p_t {
         int x, y;
     };
 
     struct f_t {
-        p_t aa, bb;
+        p_t aa, bb;  
     };
 
     size_t rows(f_t fr);
@@ -27,243 +27,276 @@ namespace top {
         explicit Dot(p_t dd);
         p_t begin() const override;
         p_t next(p_t prev) const override;
-
     private:
         p_t d;
     };
 
-    struct HSeg : IDraw {
-        explicit HSeg(p_t start, int length);
+    struct VerticalLine : IDraw {
+        VerticalLine(p_t start, p_t end);
         p_t begin() const override;
         p_t next(p_t prev) const override;
-
     private:
-        p_t startp;
-        int seglen;
+        p_t start_;
+        p_t end_;
+        bool is_valid_;
     };
 
     struct Square : IDraw {
-        explicit Square(p_t top_left, int size);
+        Square(p_t left_bottom, int side);
         p_t begin() const override;
         p_t next(p_t prev) const override;
-
     private:
-        p_t topleft;
-        int size;
-        mutable bool instart;
-        mutable int nowid;
+        p_t lb; 
+        int side;
+    };
+
+    struct Rect: IDraw {
+        Rect(p_t pos, int w, int h);
+        Rect(p_t a, p_t b);
+        p_t begin() const override;
+        p_t next(p_t prev) const override;
+        f_t rect;
     };
 
     p_t* extend(const p_t* pts, size_t s, p_t fill);
     void extend(p_t** pts, size_t& s, p_t fill);
     void append(const IDraw* sh, p_t** ppts, size_t& s);
-    f_t frame(const p_t* pts, size_t s);
-    char* canvas(f_t fr, char fill);
-    void paint(p_t p, char* cnv, f_t fr, char fill);
-    void flush(std::ostream& os, const char* cnv, f_t fr);
-}
+    f_t frame(const p_t * pts, size_t s);
+    char * canvas(f_t fr, char fill);
+    void paint(p_t p, char * cnv, f_t fr, char fill);
+    void flush (std::ostream & os, const char* cnv, f_t fr);
+} 
 
 int main() {
-    using namespace top;
-    int err = 0;
-    IDraw* shp[5] = {};
-    p_t* pts = nullptr;
+    using namespace topit;
+    int err=0;
+    size_t shp_size = 2;
+    IDraw* shp[shp_size] = {};
+    p_t * pts = nullptr;
     size_t s = 0;
-
+    
     try {
-        shp[0] = new Dot({ -10, -10 });
-        shp[1] = new Dot({ 10, -10 });
-        shp[2] = new Dot({ -10, 10 });
-        shp[3] = new HSeg({ -8, 0 }, 16);
-        shp[4] = new Square({ 2, 2 }, 5);
-
-        for (size_t i = 0; i < 5; ++i) {
+        shp[0] = new Square({10, 5}, 10);
+        shp[1] = new Dot({2, 2});
+        
+        for (size_t i = 0; i < shp_size; ++i){
             append(shp[i], &pts, s);
         }
         f_t fr = frame(pts, s);
-        char* cnv = canvas(fr, '.');
-        for (size_t i = 0; i < s; ++i) {
+        char * cnv = canvas(fr, '.');
+        for (size_t i = 0; i < s; ++i){
             paint(pts[i], cnv, fr, '#');
         }
         flush(std::cout, cnv, fr);
         delete[] cnv;
 
-    }
-    catch (...) {
-        std::cerr << "Error\n";
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
         err = 1;
     }
 
-    for (int i = 4; i >= 0; --i) {
+    for (size_t i = 0; i < shp_size; ++i) {
         delete shp[i];
     }
-    delete[] pts;
-
+    
     return err;
 }
 
-void top::extend(p_t** pts, size_t& s, p_t fill) {
+void topit::extend(p_t** pts, size_t& s, p_t fill){
     p_t* r = extend(*pts, s, fill);
-    delete[] * pts;
+    delete[] *pts;
     ++s;
     *pts = r;
 }
 
-top::p_t* top::extend(const p_t* pts, size_t s, p_t fill) {
+topit::p_t* topit::extend(const p_t* pts, size_t s, p_t fill){
     p_t* r = new p_t[s + 1];
-    for (size_t i = 0; i < s; ++i) {
+    for (size_t i = 0; i < s; ++i){
         r[i] = pts[i];
     }
     r[s] = fill;
     return r;
 }
 
-void top::append(const IDraw* sh, p_t** ppts, size_t& s) {
-    p_t first = sh->begin();
-    extend(ppts, s, first);
-    
-    p_t current = first;
-    p_t next_pt = sh->next(current);
-    
-    while (next_pt != first) {
-        extend(ppts, s, next_pt);
-        current = next_pt;
-        next_pt = sh->next(current);
+void topit::append(const IDraw* sh, p_t** ppts, size_t& s){
+    extend(ppts, s, sh->begin());
+    p_t b = sh->begin();
+
+    while(sh->next(b) != sh->begin()){
+        b = sh->next(b);
+        extend(ppts, s, b);
     }
 }
 
-void top::paint(p_t p, char* cnv, f_t fr, char fill) {
-    int dx = p.x - fr.aa.x;
-    int dy = fr.bb.y - p.y;
+void topit::paint(p_t p, char * cnv, f_t fr, char fill){
+    size_t dx = p.x - fr.aa.x;
+    size_t dy = fr.bb.y - p.y;
     cnv[dy * cols(fr) + dx] = fill;
 }
 
-void top::flush(std::ostream& os, const char* cnv, f_t fr) {
-    for (size_t i = 0; i < rows(fr); ++i) {
-        for (size_t j = 0; j < cols(fr); ++j) {
+void topit::flush(std::ostream& os, const char* cnv, f_t fr){
+    for (size_t i = 0; i < rows(fr); ++i){
+        for (size_t j = 0; j < cols(fr); ++j){
             os << cnv[i * cols(fr) + j];
         }
         os << "\n";
     }
 }
 
-char* top::canvas(f_t fr, char fill) {
+char * topit::canvas(f_t fr, char fill){
     size_t s = rows(fr) * cols(fr);
-    char* c = new char[s];
-    for (size_t i = 0; i < s; ++i) {
+    char * c = new char[rows(fr) * cols (fr)];
+    for (size_t i = 0; i < s; ++i){
         c[i] = fill;
     }
     return c;
 }
 
-top::f_t top::frame(const p_t* pts, size_t s) {
+topit::f_t topit::frame(const p_t* pts, size_t s){
     int minx = pts[0].x, miny = pts[0].y;
     int maxx = minx, maxy = miny;
-    for (size_t i = 1; i < s; ++i) {
-        if (pts[i].x < minx) minx = pts[i].x;
-        if (pts[i].y < miny) miny = pts[i].y;
-        if (pts[i].x > maxx) maxx = pts[i].x;
-        if (pts[i].y > maxy) maxy = pts[i].y;
+    for (size_t i = 1; i < s; ++i){
+        minx = std::min(minx, pts[i].x);
+        miny = std::min(miny, pts[i].y);
+        maxx = std::max(maxx, pts[i].x);
+        maxy = std::max(maxy, pts[i].y);
     }
-    p_t a{ minx, miny };
-    p_t b{ maxx, maxy };
-    return f_t{ a,b };
+    p_t a{minx, miny};
+    p_t b{maxx, maxy};
+    return f_t{a,b};
 }
 
-top::Dot::Dot(p_t dd) : d{ dd } {}
 
-top::p_t top::Dot::begin() const {
+topit::Dot::Dot(p_t dd) : d{dd} {}
+
+topit::p_t topit::Dot::begin() const {
     return d;
 }
 
-top::p_t top::Dot::next(p_t prev) const {
+topit::p_t topit::Dot::next(p_t prev) const {
     if (prev != d) {
         throw std::logic_error("bad prev");
     }
     return d;
 }
 
-size_t top::rows(f_t fr) {
+topit::VerticalLine::VerticalLine(p_t start, p_t end) 
+    : start_(start), end_(end), is_valid_(start.x == end.x) {
+}
+
+topit::p_t topit::VerticalLine::begin() const {
+    if (!is_valid_) {
+        throw std::logic_error("Invalid vertical line: x coordinates differ");
+    }
+    
+    if (start_.y <= end_.y) {
+        return start_;
+    } else {
+        return end_;
+    }
+}
+
+topit::p_t topit::VerticalLine::next(p_t prev) const {
+    if (!is_valid_) {
+        throw std::logic_error("Invalid vertical line");
+    }
+    p_t min_point = start_;
+    p_t max_point = end_;
+    if (start_.y > end_.y) {
+        min_point = end_;
+        max_point = start_;
+    }
+    
+    if (prev == max_point) {
+        return min_point;
+    }
+    
+    p_t next_point = prev;
+    next_point.y += 1;
+    
+    return next_point;
+}
+
+topit::Square::Square(p_t left_bottom, int side)
+    : lb(left_bottom), side(side)
+{
+    if (side <= 0) {
+        throw std::logic_error("Square side must be positive");
+    }
+}
+
+topit::p_t topit::Square::begin() const {
+    return lb;
+}
+
+topit::p_t topit::Square::next(p_t prev) const {
+
+    p_t rb = { lb.x + side, lb.y };        
+    p_t lt = { lb.x,         lb.y + side };  
+    p_t rt = { lb.x + side, lb.y + side };  
+
+    if (prev.y == lb.y && prev.x < rb.x) {
+        return { prev.x + 1, prev.y };
+    }
+
+    if (prev.x == rb.x && prev.y < rt.y) {
+        return { prev.x, prev.y + 1 };
+    }
+
+    if (prev.y == rt.y && prev.x > lt.x) {
+        return { prev.x - 1, prev.y };
+    }
+
+    if (prev.x == lt.x && prev.y > lb.y) {
+        return { prev.x, prev.y - 1 };
+    }
+
+    return lb;
+}
+
+topit::Rect::Rect(p_t pos, int w, int h) :
+    rect{pos, {pos.x + w, pos.y + h}}
+{
+    if (!(w > 0 && h > 0)) {
+        throw std::logic_error("bad request");
+    }
+}
+
+topit::Rect::Rect(p_t a, p_t b): Rect(a, b.x - a.x, b.y - a.y) {}
+
+topit::p_t topit::Rect::begin() const {
+    return rect.aa;
+}
+
+topit::p_t topit::Rect::next(p_t prev) const {
+    if (prev.x == rect.aa.x && prev.y < rect.bb.y){
+        return {prev.x, prev.y + 1};
+    } else if (prev.y == rect.bb.y && prev.x < rect.bb.x){
+        return  {prev.x + 1, prev.y};
+    } else if (prev.x == rect.bb.x && prev.y > rect.aa.y){
+        return {prev.x, prev.y - 1};
+    } else if (prev.y == rect.aa.y && prev.x > rect.aa.x){
+        return {prev.x - 1, prev.y};
+    }
+    throw std::logic_error("bad impl");
+}
+
+
+
+
+size_t topit::rows (f_t fr){
     return (fr.bb.y - fr.aa.y + 1);
 }
 
-size_t top::cols(f_t fr) {
+size_t topit::cols (f_t fr){
     return (fr.bb.x - fr.aa.x + 1);
 }
 
-bool top::operator==(p_t a, p_t b) {
+bool topit::operator==(p_t a, p_t b) {
     return a.x == b.x && a.y == b.y;
 }
 
-bool top::operator!=(p_t a, p_t b) {
+bool topit::operator!=(p_t a, p_t b) {
     return !(a == b);
 }
 
-top::HSeg::HSeg(p_t start, int length)
-    : startp{ start }, seglen{ length } {
-    if (length <= 0) {
-        throw std::invalid_argument("len < 0");
-    }
-}
-
-top::p_t top::HSeg::begin() const {
-    return startp;
-}
-
-top::p_t top::HSeg::next(p_t prev) const {
-    if (prev == startp && seglen > 1) {
-        return { startp.x + 1, startp.y };
-    }
-    if (prev.x < startp.x + seglen - 1 && prev.x >= startp.x) {
-        return { prev.x + 1, prev.y };
-    }
-    return startp;
-}
-
-top::Square::Square(p_t topleft, int size)
-    : topleft{topleft}, size{size}, instart{false}, nowid{0} {
-    if (size <= 0) {
-        throw std::invalid_argument("size <= 0");
-    }
-}
-
-top::p_t top::Square::begin() const {
-    instart = false;
-    nowid = 0;
-    return topleft;
-}
-
-top::p_t top::Square::next(p_t prev) const {
-    if (instart) {
-        return topleft;
-    }
-    
-    if (size == 1) {
-        instart = true;
-        return topleft;
-    }
-    int points = 4 * (size - 1);
-    
-    if (nowid >= points - 1) {
-        instart = true;
-        return topleft;
-    }
-    
-    nowid++;
-
-    if (nowid < size) {
-        return {topleft.x + nowid, topleft.y};
-    }
-    else if (nowid < size + (size - 1)) {
-        int idx = nowid - size;
-        return {topleft.x + size - 1, topleft.y + idx + 1};
-    }
-    else if (nowid < size + 2 * (size - 1)) {
-        int idx = nowid - (size + size - 1);
-        return {topleft.x + size - 2 - idx, topleft.y + size - 1};
-    }
-    else {
-        int idx = nowid - (size + 2 * (size - 1));
-        return {topleft.x, topleft.y + size - 2 - idx};
-    }
-}
